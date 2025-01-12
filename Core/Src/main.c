@@ -19,7 +19,7 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include <math.h>
-
+#include <stdio.h>
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 
@@ -55,6 +55,15 @@ int16_t Mag_y=0;
 int16_t Mag_z=0;
 float scale=2.56;
 float heading;
+float Mag_X_uT;
+float Mag_Y_uT;
+float Mag_Z_uT;
+
+int16_t Mag_X_uT_int;
+int16_t Mag_Y_uT_int;
+int16_t Mag_Z_uT_int;
+uint8_t MagArray_Raw[100];
+uint8_t MagArray_Uni[100];
 
 int declination_degs = 9;
 int declination_mins = 46;
@@ -171,8 +180,15 @@ declination_offset_radians= ( declination_degs + (1/60 * declination_mins)) * (M
 	    Mag_y = ((buffer_y[0] << 8) | buffer_y[1]);
 	    HAL_Delay(100);
 
-	    heading = -atan2f(Mag_y,Mag_x)*180/M_PI;
-	    //asd
+	    Mag_X_uT=Mag_x*2.56/10;
+	    Mag_Y_uT=Mag_y*2.56/10;
+	    Mag_Z_uT=Mag_z*2.56/10;
+
+	    Mag_X_uT_int=Mag_X_uT*10;
+	    Mag_Y_uT_int=Mag_Y_uT*10;
+	    Mag_Z_uT_int=Mag_Z_uT*10;
+
+	    heading = -atan2f(Mag_Y_uT,Mag_X_uT)*180/M_PI;
 	    if(heading>0)
 	    {
 	    	heading=heading;
@@ -180,6 +196,12 @@ declination_offset_radians= ( declination_degs + (1/60 * declination_mins)) * (M
 	    else {
 			heading=360-heading;
 		}
+
+	    sprintf(MagArray_Raw,"Raw:15,20,0,0,0,0,%d,%d,%d\n",Mag_X_uT_int, Mag_Y_uT_int, Mag_Z_uT_int);
+	    HAL_UART_Transmit(&huart1, (uint8_t *)MagArray_Raw, strlen(MagArray_Raw), 100);
+//	    sprintf(MagArray_Uni,"Uni:0.00,0.00,0.00,0.0000,0.0000,0.0000,%3.2f, %3.2f, %3.2f\r\n",Mag_X_uT, Mag_Y_uT, Mag_Z_uT);
+//	    HAL_UART_Transmit(&huart1, (uint8_t *)MagArray_Uni, strlen(MagArray_Uni), 100);
+
 	    a++;
 
     /* USER CODE BEGIN 3 */
