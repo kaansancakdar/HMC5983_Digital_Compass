@@ -197,7 +197,7 @@ declination_offset_radians= ( declination_degs + (1/60 * declination_mins)) * (M
 			heading=360-heading;
 		}
 
-	    sprintf(MagArray_Raw,"Raw:15,20,0,0,0,0,%d,%d,%d\n",Mag_X_uT_int, Mag_Y_uT_int, Mag_Z_uT_int);
+	    sprintf(MagArray_Raw,"Raw:0,0,0,0,0,0,%d,%d,%d\n",Mag_X_uT_int, Mag_Y_uT_int, Mag_Z_uT_int);
 	    HAL_UART_Transmit(&huart1, (uint8_t *)MagArray_Raw, strlen(MagArray_Raw), 100);
 //	    sprintf(MagArray_Uni,"Uni:0.00,0.00,0.00,0.0000,0.0000,0.0000,%3.2f, %3.2f, %3.2f\r\n",Mag_X_uT, Mag_Y_uT, Mag_Z_uT);
 //	    HAL_UART_Transmit(&huart1, (uint8_t *)MagArray_Uni, strlen(MagArray_Uni), 100);

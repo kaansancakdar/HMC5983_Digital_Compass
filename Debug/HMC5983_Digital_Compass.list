@@ -27,25 +27,23 @@ Idx Name          Size      VMA       LMA       File off  Algn
                   ALLOC
  11 .ARM.attributes 00000030  00000000  00000000  000091d8  2**0
                   CONTENTS, READONLY
- 12 .debug_info   0000a3ff  00000000  00000000  00009208  2**0
+ 12 .debug_info   0000ac4f  00000000  00000000  00009208  2**0
                   CONTENTS, READONLY, DEBUGGING, OCTETS
- 13 .debug_abbrev 00001835  00000000  00000000  00013607  2**0
+ 13 .debug_abbrev 000017ad  00000000  00000000  00013e57  2**0
                   CONTENTS, READONLY, DEBUGGING, OCTETS
- 14 .debug_aranges 000009b0  00000000  00000000  00014e40  2**3
+ 14 .debug_aranges 000009b0  00000000  00000000  00015608  2**3
                   CONTENTS, READONLY, DEBUGGING, OCTETS
- 15 .debug_rnglists 0000078e  00000000  00000000  000157f0  2**0
+ 15 .debug_ranges 00000930  00000000  00000000  00015fb8  2**3
                   CONTENTS, READONLY, DEBUGGING, OCTETS
- 16 .debug_macro  00016861  00000000  00000000  00015f7e  2**0
+ 16 .debug_macro  00016861  00000000  00000000  000168e8  2**0
                   CONTENTS, READONLY, DEBUGGING, OCTETS
- 17 .debug_line   0000c5d0  00000000  00000000  0002c7df  2**0
+ 17 .debug_line   0000c5df  00000000  00000000  0002d149  2**0
                   CONTENTS, READONLY, DEBUGGING, OCTETS
- 18 .debug_str    00089b02  00000000  00000000  00038daf  2**0
+ 18 .debug_str    00089b11  00000000  00000000  00039728  2**0
                   CONTENTS, READONLY, DEBUGGING, OCTETS
- 19 .comment      00000043  00000000  00000000  000c28b1  2**0
+ 19 .comment      00000043  00000000  00000000  000c3239  2**0
                   CONTENTS, READONLY
- 20 .debug_frame  00003a34  00000000  00000000  000c28f4  2**2
-                  CONTENTS, READONLY, DEBUGGING, OCTETS
- 21 .debug_line_str 00000071  00000000  00000000  000c6328  2**0
+ 20 .debug_frame  00003a34  00000000  00000000  000c327c  2**2
                   CONTENTS, READONLY, DEBUGGING, OCTETS
 
 Disassembly of section .text:
@@ -1636,7 +1634,7 @@ declination_offset_radians= ( declination_degs + (1/60 * declination_mins)) * (M
  8001280:	edc3 7a00 	vstr	s15, [r3]
 		}
 
-	    sprintf(MagArray_Raw,"Raw:15,20,0,0,0,0,%d,%d,%d\n",Mag_X_uT_int, Mag_Y_uT_int, Mag_Z_uT_int);
+	    sprintf(MagArray_Raw,"Raw:0,0,0,0,0,0,%d,%d,%d\n",Mag_X_uT_int, Mag_Y_uT_int, Mag_Z_uT_int);
  8001284:	4b12      	ldr	r3, [pc, #72]	@ (80012d0 <main+0x388>)
  8001286:	f9b3 3000 	ldrsh.w	r3, [r3]
  800128a:	461a      	mov	r2, r3
