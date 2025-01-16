@@ -19,7 +19,6 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include <math.h>
-#include <stdio.h>
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 
@@ -50,25 +49,25 @@
 #define HMC5883l_ADD_DATAY_MSB_MULTI (HMC5883l_ADD_DATAY_MSB | 0x80)
 #define HMC5883l_ADD_DATAZ_MSB_MULTI (HMC5883l_ADD_DATAZ_MSB | 0x80)
 
-int16_t Mag_x=0;
-int16_t Mag_y=0;
-int16_t Mag_z=0;
-float scale=2.56;
+uint8_t regA=0x00;
+uint8_t regB=0x01;
+uint8_t regMode=0x02;
+uint8_t regData=0xC3;
+
+uint8_t buffer[6];
+int16_t Raw_X;
+int16_t Raw_Y;
+int16_t Raw_Z;
+
+float mG_X;
+float mG_Y;
+float mG_Z;
+
+float uT_X;
+float uT_Y;
+float uT_Z;
+
 float heading;
-float Mag_X_uT;
-float Mag_Y_uT;
-float Mag_Z_uT;
-
-int16_t Mag_X_uT_int;
-int16_t Mag_Y_uT_int;
-int16_t Mag_Z_uT_int;
-uint8_t MagArray_Raw[100];
-uint8_t MagArray_Uni[100];
-
-int declination_degs = 9;
-int declination_mins = 46;
-float declination_offset_radians;
-
 uint8_t a;
 /* USER CODE END PTD */
 
@@ -83,7 +82,7 @@ uint8_t a;
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
-I2C_HandleTypeDef hi2c1;
+SPI_HandleTypeDef hspi1;
 
 UART_HandleTypeDef huart1;
 
@@ -94,8 +93,8 @@ UART_HandleTypeDef huart1;
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
-static void MX_I2C1_Init(void);
 static void MX_USART1_UART_Init(void);
+static void MX_SPI1_Init(void);
 /* USER CODE BEGIN PFP */
 
 
@@ -103,11 +102,7 @@ static void MX_USART1_UART_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-uint8_t buffer[6];
-uint8_t buffer_x[2];
-uint8_t buffer_y[2];
-uint8_t buffer_z[2];
-uint8_t status;
+
 
 /* USER CODE END 0 */
 
@@ -120,14 +115,6 @@ int main(void)
 
   /* USER CODE BEGIN 1 */
 
-a=0;
-status=0;
-
-uint8_t RegSettingA = HMC5883l_Enable_A;
-uint8_t RegSettingB = HMC5883l_Enable_B;
-uint8_t RegSettingMR = HMC5883l_MR;
-
-declination_offset_radians= ( declination_degs + (1/60 * declination_mins)) * (M_PI / 180);
 
   /* USER CODE END 1 */
 
@@ -149,21 +136,46 @@ declination_offset_radians= ( declination_degs + (1/60 * declination_mins)) * (M
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
-  MX_I2C1_Init();
   MX_USART1_UART_Init();
+  MX_SPI1_Init();
   /* USER CODE BEGIN 2 */
-  HAL_I2C_Mem_Write(&hi2c1, 0x1E<<1, 0x00 , 1, &RegSettingA , 1, 100);
-  HAL_I2C_Mem_Write(&hi2c1, 0x1E<<1, 0x01 , 1, &RegSettingB , 1, 100);
-  HAL_I2C_Mem_Write(&hi2c1, 0x1E<<1, 0x02 , 1, &RegSettingMR , 1, 100);
-
-  HAL_Delay(100);
-  HAL_I2C_Mem_Read(&hi2c1, 0x1E<<1, 0x00, 1, &status, 1, 100);
-  HAL_Delay(100);
-  //uint16_t address;
-   //char uartBuf[10];
-  //HAL_StatusTypeDef status;
+  uint8_t data=HMC5883l_Enable_B;
+  uint8_t readreg=0x81;
 
 
+  HAL_GPIO_WritePin(HMC5983_CS_GPIO_Port, HMC5983_CS_Pin, GPIO_PIN_RESET);
+  HAL_SPI_Transmit(&hspi1, &regB, 1, 100);
+  HAL_SPI_Transmit(&hspi1, &data, 1, 100);
+  HAL_GPIO_WritePin(HMC5983_CS_GPIO_Port, HMC5983_CS_Pin, GPIO_PIN_SET);
+
+  data=HMC5883l_Enable_A;
+  HAL_GPIO_WritePin(HMC5983_CS_GPIO_Port, HMC5983_CS_Pin, GPIO_PIN_RESET);
+  HAL_SPI_Transmit(&hspi1, &regA, 1, 100);
+  HAL_SPI_Transmit(&hspi1, &data, 1, 100);
+  HAL_GPIO_WritePin(HMC5983_CS_GPIO_Port, HMC5983_CS_Pin, GPIO_PIN_SET);
+
+  data=HMC5883l_MR;
+  HAL_GPIO_WritePin(HMC5983_CS_GPIO_Port, HMC5983_CS_Pin, GPIO_PIN_RESET);
+  HAL_SPI_Transmit(&hspi1, &regMode, 1, 100);
+  HAL_SPI_Transmit(&hspi1, &data, 1, 100);
+  HAL_GPIO_WritePin(HMC5983_CS_GPIO_Port, HMC5983_CS_Pin, GPIO_PIN_SET);
+
+  HAL_Delay(250);
+  HAL_GPIO_WritePin(HMC5983_CS_GPIO_Port, HMC5983_CS_Pin, GPIO_PIN_RESET);
+  HAL_SPI_Transmit(&hspi1, &readreg, 1, 100);
+  HAL_SPI_Receive(&hspi1, &data, 1, 100);
+  HAL_GPIO_WritePin(HMC5983_CS_GPIO_Port, HMC5983_CS_Pin, GPIO_PIN_SET);
+  HAL_Delay(250);
+
+  readreg=0x80;
+  HAL_GPIO_WritePin(HMC5983_CS_GPIO_Port, HMC5983_CS_Pin, GPIO_PIN_RESET);
+  HAL_SPI_Transmit(&hspi1, &readreg, 1, 100);
+  HAL_SPI_Receive(&hspi1, &data, 1, 100);
+  HAL_GPIO_WritePin(HMC5983_CS_GPIO_Port, HMC5983_CS_Pin, GPIO_PIN_SET);
+
+
+
+  HAL_Delay(250);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -172,39 +184,28 @@ declination_offset_radians= ( declination_degs + (1/60 * declination_mins)) * (M
   {
     /* USER CODE END WHILE */
 
-	    HAL_I2C_Mem_Read(&hi2c1, 0x1E<<1, 0x03, 1, (uint8_t *)&buffer_x, 2, 100);
-	    Mag_x = ((buffer_x[0] << 8) | buffer_x[1]);
-	    HAL_I2C_Mem_Read(&hi2c1, 0x1E<<1, 0x05, 1, (uint8_t *)&buffer_z, 2, 100);
-	    Mag_z = ((buffer_z[0] << 8) | buffer_z[1]);
-	    HAL_I2C_Mem_Read(&hi2c1, 0x1E<<1, 0x07, 1, (uint8_t *)&buffer_y, 2, 100);
-	    Mag_y = ((buffer_y[0] << 8) | buffer_y[1]);
-	    HAL_Delay(100);
-
-	    Mag_X_uT=Mag_x*2.56/10;
-	    Mag_Y_uT=Mag_y*2.56/10;
-	    Mag_Z_uT=Mag_z*2.56/10;
-
-	    Mag_X_uT_int=Mag_X_uT*10;
-	    Mag_Y_uT_int=Mag_Y_uT*10;
-	    Mag_Z_uT_int=Mag_Z_uT*10;
-
-	    heading = -atan2f(Mag_Y_uT,Mag_X_uT)*180/M_PI;
-	    if(heading>0)
-	    {
-	    	heading=heading;
-	    }
-	    else {
-			heading=360-heading;
-		}
-
-	    sprintf(MagArray_Raw,"Raw:0,0,0,0,0,0,%d,%d,%d\n",Mag_X_uT_int, Mag_Y_uT_int, Mag_Z_uT_int);
-	    HAL_UART_Transmit(&huart1, (uint8_t *)MagArray_Raw, strlen(MagArray_Raw), 100);
-//	    sprintf(MagArray_Uni,"Uni:0.00,0.00,0.00,0.0000,0.0000,0.0000,%3.2f, %3.2f, %3.2f\r\n",Mag_X_uT, Mag_Y_uT, Mag_Z_uT);
-//	    HAL_UART_Transmit(&huart1, (uint8_t *)MagArray_Uni, strlen(MagArray_Uni), 100);
-
-	    a++;
-
     /* USER CODE BEGIN 3 */
+
+	  HAL_GPIO_WritePin(HMC5983_CS_GPIO_Port, HMC5983_CS_Pin, GPIO_PIN_RESET);
+	  HAL_SPI_Transmit(&hspi1, &regData, 1, 100);
+	  HAL_SPI_Receive(&hspi1, buffer, 6, 100);
+	  HAL_GPIO_WritePin(HMC5983_CS_GPIO_Port, HMC5983_CS_Pin, GPIO_PIN_SET);
+	  Raw_X=((buffer[0]<<8)|buffer[1]); //X
+	  Raw_Z=((buffer[2]<<8)|buffer[3]); //Z
+	  Raw_Y=((buffer[4]<<8)|buffer[5]); //Y
+
+	  mG_X=Raw_X*2.56;
+	  mG_Y=Raw_Y*2.56;
+	  mG_Z=Raw_Z*2.56;
+
+	  uT_X=mG_X/10.0;
+	  uT_Y=mG_Y/10.0;
+	  uT_Z=mG_Z/10.0;
+
+	  heading=atan2(uT_X,uT_Y)*180/M_PI;
+
+	  HAL_Delay(20);
+	  a++;
   }
   /* USER CODE END 3 */
 }
@@ -256,36 +257,40 @@ void SystemClock_Config(void)
 }
 
 /**
-  * @brief I2C1 Initialization Function
+  * @brief SPI1 Initialization Function
   * @param None
   * @retval None
   */
-static void MX_I2C1_Init(void)
+static void MX_SPI1_Init(void)
 {
 
-  /* USER CODE BEGIN I2C1_Init 0 */
+  /* USER CODE BEGIN SPI1_Init 0 */
 
-  /* USER CODE END I2C1_Init 0 */
+  /* USER CODE END SPI1_Init 0 */
 
-  /* USER CODE BEGIN I2C1_Init 1 */
+  /* USER CODE BEGIN SPI1_Init 1 */
 
-  /* USER CODE END I2C1_Init 1 */
-  hi2c1.Instance = I2C1;
-  hi2c1.Init.ClockSpeed = 400000;
-  hi2c1.Init.DutyCycle = I2C_DUTYCYCLE_2;
-  hi2c1.Init.OwnAddress1 = 0;
-  hi2c1.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
-  hi2c1.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
-  hi2c1.Init.OwnAddress2 = 0;
-  hi2c1.Init.GeneralCallMode = I2C_GENERALCALL_DISABLE;
-  hi2c1.Init.NoStretchMode = I2C_NOSTRETCH_DISABLE;
-  if (HAL_I2C_Init(&hi2c1) != HAL_OK)
+  /* USER CODE END SPI1_Init 1 */
+  /* SPI1 parameter configuration*/
+  hspi1.Instance = SPI1;
+  hspi1.Init.Mode = SPI_MODE_MASTER;
+  hspi1.Init.Direction = SPI_DIRECTION_2LINES;
+  hspi1.Init.DataSize = SPI_DATASIZE_8BIT;
+  hspi1.Init.CLKPolarity = SPI_POLARITY_LOW;
+  hspi1.Init.CLKPhase = SPI_PHASE_1EDGE;
+  hspi1.Init.NSS = SPI_NSS_SOFT;
+  hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_2;
+  hspi1.Init.FirstBit = SPI_FIRSTBIT_MSB;
+  hspi1.Init.TIMode = SPI_TIMODE_DISABLE;
+  hspi1.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
+  hspi1.Init.CRCPolynomial = 10;
+  if (HAL_SPI_Init(&hspi1) != HAL_OK)
   {
     Error_Handler();
   }
-  /* USER CODE BEGIN I2C1_Init 2 */
+  /* USER CODE BEGIN SPI1_Init 2 */
 
-  /* USER CODE END I2C1_Init 2 */
+  /* USER CODE END SPI1_Init 2 */
 
 }
 
@@ -329,13 +334,23 @@ static void MX_USART1_UART_Init(void)
   */
 static void MX_GPIO_Init(void)
 {
+  GPIO_InitTypeDef GPIO_InitStruct = {0};
 /* USER CODE BEGIN MX_GPIO_Init_1 */
 /* USER CODE END MX_GPIO_Init_1 */
 
   /* GPIO Ports Clock Enable */
   __HAL_RCC_GPIOH_CLK_ENABLE();
   __HAL_RCC_GPIOA_CLK_ENABLE();
-  __HAL_RCC_GPIOB_CLK_ENABLE();
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(HMC5983_CS_GPIO_Port, HMC5983_CS_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin : HMC5983_CS_Pin */
+  GPIO_InitStruct.Pin = HMC5983_CS_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(HMC5983_CS_GPIO_Port, &GPIO_InitStruct);
 
 /* USER CODE BEGIN MX_GPIO_Init_2 */
 /* USER CODE END MX_GPIO_Init_2 */
