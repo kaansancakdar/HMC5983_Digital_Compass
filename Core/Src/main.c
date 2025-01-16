@@ -19,6 +19,8 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include <math.h>
+#include <stdio.h>
+#include <string.h>
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 
@@ -66,6 +68,12 @@ float mG_Z;
 float uT_X;
 float uT_Y;
 float uT_Z;
+
+int16_t raw_mG_X;
+int16_t raw_mG_Y;
+int16_t raw_mG_Z;
+
+uint16_t sendData[100];
 
 float heading;
 uint8_t a;
@@ -198,10 +206,16 @@ int main(void)
 	  mG_Y=Raw_Y*2.56;
 	  mG_Z=Raw_Z*2.56;
 
+	  raw_mG_X=mG_X;
+	  raw_mG_Y=mG_Y;
+	  raw_mG_Z=mG_Z;
+
 	  uT_X=mG_X/10.0;
 	  uT_Y=mG_Y/10.0;
 	  uT_Z=mG_Z/10.0;
 
+	  sprintf(sendData,"Raw:0,0,0,0,0,0,%d,%d,%d\r\n",raw_mG_X,raw_mG_Y,raw_mG_Z);
+	  HAL_UART_Transmit(&huart1, sendData, strlen(sendData), 1000);
 	  heading=atan2(uT_X,uT_Y)*180/M_PI;
 
 	  HAL_Delay(20);
