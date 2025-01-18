@@ -217,9 +217,7 @@ int main(void)
 	  sprintf(sendData,"Raw:0,0,0,0,0,0,%d,%d,%d\r\n",raw_mG_X,raw_mG_Y,raw_mG_Z);
 	  HAL_UART_Transmit(&huart1, sendData, strlen(sendData), 1000);
 	  heading=atan2(uT_X,uT_Y)*180/M_PI;
-
-	  HAL_Delay(20);
-	  a++;
+	  HAL_Delay(5);
   }
   /* USER CODE END 3 */
 }
