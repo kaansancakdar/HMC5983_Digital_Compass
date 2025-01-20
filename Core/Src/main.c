@@ -21,6 +21,8 @@
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
+
+#include "HMC5983.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 
@@ -51,10 +53,16 @@
 #define HMC5883l_ADD_DATAY_MSB_MULTI (HMC5883l_ADD_DATAY_MSB | 0x80)
 #define HMC5883l_ADD_DATAZ_MSB_MULTI (HMC5883l_ADD_DATAZ_MSB | 0x80)
 
-uint8_t regA=0x00;
-uint8_t regB=0x01;
-uint8_t regMode=0x02;
-uint8_t regData=0xC3;
+static Register_A_ Register_A;
+static Register_B_ Register_B;
+static Register_Mode_ Register_Mode;
+
+uint8_t Register_A_Value=0;
+uint8_t Register_B_Value=0;
+uint8_t Register_Mode_Value=0;
+
+uint8_t HMC5983_Init_OK=0;
+uint8_t Read_Data_Register=0xC3;
 
 uint8_t buffer[6];
 int16_t Raw_X;
@@ -73,9 +81,12 @@ int16_t raw_mG_X;
 int16_t raw_mG_Y;
 int16_t raw_mG_Z;
 
-uint16_t sendData[100];
+char sendData[100];
 
 float heading;
+float heading_cal;
+float magnetic_declination=-9.76;
+
 uint8_t a;
 /* USER CODE END PTD */
 
@@ -147,43 +158,36 @@ int main(void)
   MX_USART1_UART_Init();
   MX_SPI1_Init();
   /* USER CODE BEGIN 2 */
-  uint8_t data=HMC5883l_Enable_B;
-  uint8_t readreg=0x81;
+  Register_A.Set_Temperature_Sensor=Set_Temperature_Sensor_Off;
+  Register_A.Set_Sample_Average=Sample_Avarage_8;
+  Register_A.Set_OutputRate=OutpuRate_15;
+  Register_A.Set_Measurement_Mode=Measurement_Mode_Normal;
+
+  Register_B.Set_Gain=Set_Gain_4P7;
+  Register_B.Set_Scale=Scale_4P7;
+
+  Register_Mode.Set_I2C_HighSpeed=Set_I2C_HighSpeed_Off;
+  Register_Mode.Set_Lowest_Power_Mod=Set_Lowest_Power_Mod_Off;
+  Register_Mode.Set_SPI_Mode_Selection=SPI_Mode_Selection_4Wire;
+  Register_Mode.Set_Operating_Mode=Operating_Mode_Continuous_Measurement;
+
+  Register_A_Value=Set_Register_A(Register_A.Set_Temperature_Sensor, Register_A.Set_Sample_Average, Register_A.Set_OutputRate, Register_A.Set_Measurement_Mode);
+  Register_B_Value=Set_Register_B(Register_B.Set_Gain);
+  Register_Mode_Value=Set_Mode_Register(Register_Mode.Set_I2C_HighSpeed, Register_Mode.Set_Lowest_Power_Mod, Register_Mode.Set_SPI_Mode_Selection, Register_Mode.Set_Operating_Mode);
+
+  HMC5983_Init_OK=HMC5983_Init(&hspi1, HMC5983_CONF_A, Register_A_Value, HMC5983_CONF_B, Register_B_Value, HMC5983_MODE, Register_Mode_Value);
 
 
-  HAL_GPIO_WritePin(HMC5983_CS_GPIO_Port, HMC5983_CS_Pin, GPIO_PIN_RESET);
-  HAL_SPI_Transmit(&hspi1, &regB, 1, 100);
-  HAL_SPI_Transmit(&hspi1, &data, 1, 100);
-  HAL_GPIO_WritePin(HMC5983_CS_GPIO_Port, HMC5983_CS_Pin, GPIO_PIN_SET);
+  //Hard Iron Calibration Settings
+  const float hard_iron[3]={3.43,-6.55,5.19};
 
-  data=HMC5883l_Enable_A;
-  HAL_GPIO_WritePin(HMC5983_CS_GPIO_Port, HMC5983_CS_Pin, GPIO_PIN_RESET);
-  HAL_SPI_Transmit(&hspi1, &regA, 1, 100);
-  HAL_SPI_Transmit(&hspi1, &data, 1, 100);
-  HAL_GPIO_WritePin(HMC5983_CS_GPIO_Port, HMC5983_CS_Pin, GPIO_PIN_SET);
+  //Soft Iron Calibration Settings
+  const float soft_ireon[3][3]={
+		  {0.984,0.029,0.025},
+		  {0.029,0.997,0.003},
+		  {0.025,0.003,1.020}
+  };
 
-  data=HMC5883l_MR;
-  HAL_GPIO_WritePin(HMC5983_CS_GPIO_Port, HMC5983_CS_Pin, GPIO_PIN_RESET);
-  HAL_SPI_Transmit(&hspi1, &regMode, 1, 100);
-  HAL_SPI_Transmit(&hspi1, &data, 1, 100);
-  HAL_GPIO_WritePin(HMC5983_CS_GPIO_Port, HMC5983_CS_Pin, GPIO_PIN_SET);
-
-  HAL_Delay(250);
-  HAL_GPIO_WritePin(HMC5983_CS_GPIO_Port, HMC5983_CS_Pin, GPIO_PIN_RESET);
-  HAL_SPI_Transmit(&hspi1, &readreg, 1, 100);
-  HAL_SPI_Receive(&hspi1, &data, 1, 100);
-  HAL_GPIO_WritePin(HMC5983_CS_GPIO_Port, HMC5983_CS_Pin, GPIO_PIN_SET);
-  HAL_Delay(250);
-
-  readreg=0x80;
-  HAL_GPIO_WritePin(HMC5983_CS_GPIO_Port, HMC5983_CS_Pin, GPIO_PIN_RESET);
-  HAL_SPI_Transmit(&hspi1, &readreg, 1, 100);
-  HAL_SPI_Receive(&hspi1, &data, 1, 100);
-  HAL_GPIO_WritePin(HMC5983_CS_GPIO_Port, HMC5983_CS_Pin, GPIO_PIN_SET);
-
-
-
-  HAL_Delay(250);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -192,32 +196,67 @@ int main(void)
   {
     /* USER CODE END WHILE */
 
+	  static float hi_cal[3];
+	  float mag_data[]={uT_X,uT_Y,uT_Z
+
+	  };
     /* USER CODE BEGIN 3 */
 
 	  HAL_GPIO_WritePin(HMC5983_CS_GPIO_Port, HMC5983_CS_Pin, GPIO_PIN_RESET);
-	  HAL_SPI_Transmit(&hspi1, &regData, 1, 100);
+	  HAL_SPI_Transmit(&hspi1, &Read_Data_Register, 1, 100);
 	  HAL_SPI_Receive(&hspi1, buffer, 6, 100);
 	  HAL_GPIO_WritePin(HMC5983_CS_GPIO_Port, HMC5983_CS_Pin, GPIO_PIN_SET);
 	  Raw_X=((buffer[0]<<8)|buffer[1]); //X
 	  Raw_Z=((buffer[2]<<8)|buffer[3]); //Z
 	  Raw_Y=((buffer[4]<<8)|buffer[5]); //Y
 
-	  mG_X=Raw_X*2.56;
-	  mG_Y=Raw_Y*2.56;
-	  mG_Z=Raw_Z*2.56;
+	  mG_X=Raw_X*Register_B.Set_Scale; //mGauss Value
+	  mG_Y=Raw_Y*Register_B.Set_Scale; //mGauss Value
+	  mG_Z=Raw_Z*Register_B.Set_Scale; //mGauss Value
 
-	  raw_mG_X=mG_X;
-	  raw_mG_Y=mG_Y;
-	  raw_mG_Z=mG_Z;
+	  //For motionCal Program
+	  raw_mG_X=mG_X; //int type of mG value
+	  raw_mG_Y=mG_Y; //int type of mG value
+	  raw_mG_Z=mG_Z; //int type of mG value
 
-	  uT_X=mG_X/10.0;
-	  uT_Y=mG_Y/10.0;
-	  uT_Z=mG_Z/10.0;
 
-	  sprintf(sendData,"Raw:0,0,0,0,0,0,%d,%d,%d\r\n",raw_mG_X,raw_mG_Y,raw_mG_Z);
-	  HAL_UART_Transmit(&huart1, sendData, strlen(sendData), 1000);
-	  heading=atan2(uT_X,uT_Y)*180/M_PI;
-	  HAL_Delay(5);
+	  uT_X=mG_X/10.00;
+	  uT_Y=mG_Y/10.00;
+	  uT_Z=mG_Z/10.00;
+
+	  //sprintf(sendData,"Raw:0,0,0,0,0,0,%d,%d,%d\r\n",raw_mG_X,raw_mG_Y,raw_mG_Z);
+	  sprintf(sendData,"%.2f,%.2f,%.2f\r\n",uT_X,uT_Y,uT_Z);
+	  HAL_UART_Transmit(&huart1, (uint8_t *)sendData, strlen(sendData), 1000);
+//	  heading=atan2(uT_Y,uT_X);
+//
+//	  if(heading<0)
+//	  {
+//		  heading+=2*M_PI;
+//	  }
+//	  heading=heading*180/M_PI;
+//
+//	  //Apply Hard iron offsets
+//	  for(int i=0; i<3; i++)
+//	  {
+//		  hi_cal[i]=mag_data[i]-hard_iron[i];
+//	  }
+////
+////	  //Apply soft iron scaling
+//	  for(int i=0; i<3;i++)
+//	  {
+//		  mag_data[i]=(soft_ireon[i][0]*hi_cal[0])+(soft_ireon[i][1]*hi_cal[1])+(soft_ireon[i][2]*hi_cal[2]);
+//	  }
+//
+//	  heading_cal=atan2(mag_data[1],mag_data[0]);
+//
+//	  	  if(heading_cal<0)
+//	  	  {
+//	  		heading_cal+=2*M_PI;
+//	  	  }
+//	  	heading_cal=(heading_cal*180/M_PI)+magnetic_declination;
+	  HAL_Delay(10);
+
+
   }
   /* USER CODE END 3 */
 }

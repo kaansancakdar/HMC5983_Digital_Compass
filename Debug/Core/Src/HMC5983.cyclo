@@ -1,0 +1,4 @@
+../Core/Src/HMC5983.c:11:9:Set_Register_A	1
+../Core/Src/HMC5983.c:18:9:Set_Register_B	1
+../Core/Src/HMC5983.c:25:9:Set_Mode_Register	1
+../Core/Src/HMC5983.c:32:9:HMC5983_Init	6
