@@ -32,7 +32,7 @@ import matplotlib.pyplot as plt
 SER_PORT = 'COM8'  # Serial port
 SER_BAUD = 115200  # Serial baud rate
 SAMPLE_FREQ = 10  # Frequency to record magnetometer readings at [Hz]
-T_SAMPLE = 30  # Total time to read mangetometer readings [sec]
+T_SAMPLE = 100  # Total time to read mangetometer readings [sec]
 OUTPUT_FILENAME = 'mag-readings.txt'  # Output data file name
 
 
